@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <title>storage</title>
+
+        <style>
+            [x-cloak] {
+                display: none !important;
+            }
+        </style>
+
+        <script src="//cdn.tailwindcss.com"></script>
+    </head>
+    <body x-data="app" x-init="bootstrap()" class="text-sm font-mono bg-gray-50 selection:bg-black selection:text-white">
+        <div class="p-4 min-h-dvh overflow-y-auto flex flex-col items-center justify-center gap-4">
+            <div x-show="cors === true" x-cloak class="max-w-xl w-full mx-auto flex flex-col gap-4">
+                <section class="bg-white rounded-md border p-4 md:p-6 w-full flex flex-col gap-4 md:gap-6">
+                    <label x-show="!uploading" class="relative block text-center p-10 w-full rounded-md border-2 hover:border-black border-dashed">
+                        <div class="md:block hidden">
+                            drag file or
+                        </div>
+                        <div>
+                            hit here for upload something awesome
+                        </div>
+                        <div class="mt-2 text-gray-500 text-xs">
+                            any file of any size
+                        </div>
+                        <input class="opacity-0 absolute inset-0 w-full h-full z-10 bg-black cursor-pointer" type="file" @input="upload">
+                    </label>
+
+                    <div x-show="uploadedFiles.length > 0 || uploading" x-cloak class="flex flex-col gap-2">
+                        <div x-show="uploading" x-cloak>
+                            <div class="mb-2">
+                                <div>
+                                    Uploading
+                                </div>
+                                <div class="text-gray-500 text-xs md:block hidden">
+                                    Please wait for the uploaded to be completed.
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-md bg-gray-100">
+                                <div class="mb-1 flex items-center justify-between gap-2">
+                                    <div x-text="`${uploading?.file.name}`" class="text-xs text-gray-500 truncate"></div>
+                                    <div x-text="`${formatBytes(uploading?.file.size)}`" class="text-xs text-gray-500 shrink-0"></div>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="text-xs text-gray-500 truncate" x-text="uploading?.chunks.current ? `uploading` : `preparing`">
+                                    </div>
+                                    <div x-text="uploading?.chunks.current ? `${uploading?.chunks.current}/${uploading?.chunks.total}` : '...'" class="text-xs text-gray-500 shrink-0"></div>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="w-full relative">
+                                        <div class="h-1 w-full rounded-sm bg-gray-300"></div>
+                                        <div class="absolute top-0 left-0 h-1 w-full rounded-sm bg-black duration-200" :style="`width: ${uploading?.chunks.current ? (uploading?.chunks.current / uploading?.chunks.total * 100) : 0}%`"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="uploadedFiles.length > 0">
+                            <div>
+                                Uploaded files
+                            </div>
+                            <div class="text-gray-500 text-xs md:block hidden">
+                                Share with someone by link or hash for download.
+                            </div>
+                        </div>
+                        <template x-for="item in uploadedFiles">
+                            <div class="p-3 rounded-md border border-black border-dashed">
+                                <div class="mb-1 flex items-center justify-between gap-2">
+                                    <div x-text="`${item.file.name}`" class="text-xs text-gray-500 truncate"></div>
+                                    <div x-text="`${formatBytes(item.file.size)}`" class="text-xs text-gray-500 shrink-0"></div>
+                                </div>
+                                <div class="mt-1 flex items-center gap-1">
+                                    <button x-data="{ label () {return this.copy}, copy: 'copy url', copied: 'url copied' }" x-text="label" @click="$clipboard(`${window.location.protocol}//${window.location.host}/?hash=${item.hash}`); label = copied; setTimeout(() => label = copy, 1200);" class="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-xs"></button>
+
+                                    <button x-data="{ label () {return this.copy}, copy: 'copy hash', copied: 'hash copied' }" x-text="label" @click="$clipboard(item.hash); label = copied; setTimeout(() => label = copy, 1200);" class="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-xs"></button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <section class="bg-white rounded-md border p-4 md:p-6 flex flex-col gap-4 md:gap-6">
+                    <div x-show="!downloading" class="flex items-center gap-0">
+                        <input x-model="hash" class="px-2 py-1.5 rounded-l-md border-l border-y focus:border-black focus:outline-none outline-none w-full bg-gray-100 focus:bg-transparent" type="text" placeholder="paste hash here">
+                        <button @click="download" class="px-3 py-1.5 rounded-r-md border border-transparent bg-black text-white shrink-0" type="submit">
+                            download
+                        </button>
+                    </div>
+                    <div x-show="downloadedFiles.length > 0 || downloading" x-cloak class="flex flex-col gap-2">
+                        <div x-show="downloading">
+                            <div>
+                                Downloading
+                            </div>
+                            <div class="text-gray-500 text-xs md:block hidden">
+                                Please wait for the download to be completed.
+                            </div>
+                        </div>
+                        <div x-show="downloading" class="p-3 rounded-md bg-gray-100">
+                            <div class="mb-1 flex items-center justify-between gap-2">
+                                <div x-text="`${downloading?.file.name}`" class="text-xs text-gray-500 truncate"></div>
+                                <div x-text="`${formatBytes(downloading?.file.size)}`" class="text-xs text-gray-500 shrink-0"></div>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div x-text="`download: ${downloading?.currentChunk}/${downloading?.chunks.length}`" class="text-xs text-gray-500"></div>
+                                <div x-text="`uploaded ${new Date(downloading?.file.date).toLocaleString()}`" class="text-xs text-gray-500"></div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="w-full relative">
+                                    <div class="h-1 w-full rounded-sm bg-gray-300"></div>
+                                    <div class="absolute top-0 left-0 h-1 w-full rounded-sm bg-black duration-200" :style="`width: ${downloading?.currentChunk ? (downloading?.currentChunk / downloading?.chunks.length * 100) : 0}%`"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="downloadedFiles.length > 0">
+                            <div>
+                                Downloaded files
+                            </div>
+                            <div class="text-gray-500 text-xs md:block hidden">
+                                Files bellow already downloaded, you can save they on your device.
+                            </div>
+                        </div>
+                        <template x-for="item in downloadedFiles">
+                            <div @click="save(item)" class="p-3 rounded-md border border-black border-dashed cursor-pointer">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div x-text="`${item.file.name}`" class="text-xs text-gray-500 truncate"></div>
+                                    <div x-text="`${formatBytes(item.file.size)}`" class="text-xs text-gray-500 shrink-0"></div>
+                                </div>
+                                <div class="mt-1 flex items-center justify-between gap-2">
+                                    <div class="text-xs font-bold">
+                                        click for save
+                                    </div>
+                                    <div x-text="`uploaded ${new Date(item.file.date).toLocaleString()}`" class="text-xs text-gray-500"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </div>
+
+            <div x-show="cors === false" x-cloak class="max-w-xl w-full mx-auto flex flex-col gap-4">
+                <section class="bg-red-100 rounded-md border border-red-200 text-red-700 p-4 md:p-6 w-full">
+                    <div class="mb-4 text-center text-4xl font-bold">
+                        (!)
+                    </div>
+                    <div class="text-center">
+                        Please enable CORS policy by install any CORS extension for current browser and reload page.
+                    </div>
+                </section>
+                <section class="bg-white rounded-md border p-4 md:p-6 w-full">
+                    <div class="mb-2 font-bold">
+                        Here is a list of some CORS extensions:
+                    </div>
+                    <ul class="list-inside list-disc">
+                        <li class="truncate">
+                            <a href="https://chromewebstore.google.com/search/CORS" target="_blank" rel="noopener noreferrer" class="truncate hover:text-gray-500">
+                                [Chrome] Search in Chrome Web Store
+                            </a>
+                        </li>
+                        <li class="truncate">
+                            <a href="https://chromewebstore.google.com/detail/cors-unblock/lfhmikememgdcahcdlaciloancbhjino" target="_blank" rel="noopener noreferrer" class="truncate hover:text-gray-500">
+                                [Chrome] CORS Unblock
+                            </a>
+                        </li>
+                        <li class="truncate">
+                            <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noopener noreferrer" class="truncate hover:text-gray-500">
+                                [Chrome] Allow CORS: Access-Control-Allow-Origin
+                            </a>
+                        </li>
+                        <li class="truncate">
+                            <a href="https://addons.mozilla.org/en-US/firefox/search/?q=cors" target="_blank" rel="noopener noreferrer" class="truncate hover:text-gray-500">
+                                [Firefox] Search in Firefox Add-ons
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+                </section>
+            </div>
+
+            <div x-show="cors === null" x-cloak class="max-w-xl w-full mx-auto flex flex-col gap-4">
+                <section class="bg-white rounded-md border p-4 md:p-6 w-full">
+                    <div class="text-center animate-pulse">
+                        loading, please wait
+                    </div>
+                </section>
+            </div>
+            <div class="max-w-xl w-full mx-auto">
+                <div class="w-full flex items-center justify-between gap-4 text-gray-400 text-xs">
+                    <h1>
+                        fully anonymous & free file hosting
+                    </h1>
+                    <div x-text="`version ${version}`">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="//unpkg.com/alpinejs" defer></script>
+        <script src="./js/file.js"></script>
+        <script src="./js/dummy-image.js"></script>
+
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.magic('clipboard', () => {
+                    return subject => navigator.clipboard.writeText(subject)
+                });
+
+                Alpine.data('app', () => ({
+                    version: '1.0.0-beta',
+                    cors: null,
+                    divider: '{!{!d!v!d3r!}!}',
+                    file: null,
+                    hash: null,
+                    uploading: null,
+                    downloading: null,
+                    uploadedFiles: [],
+                    downloadedFiles: [],
+
+                    async bootstrap () {
+                        await this.checkCORS();
+
+                        if (this.cors && (this.hash = this.getUrlParameter('hash'))) {
+                            console.log(`hash from url: ${this.hash}`);
+                            this.download();
+                        }
+                    },
+
+                    async download () {
+                        if (!this.hash) {
+                            return;
+                        }
+
+                        let data;
+
+                        try {
+                            data = JSON.parse(base64_decode(this.hash))
+                        } catch (error) {
+                            console.error(`invalid hash: ${this.hash}`);
+                            return;
+                        }
+
+                        console.log(`download data:`, data);
+
+                        this.downloading = {...data, currentChunk: null};
+
+                        let fileContent = new Uint8Array;
+
+                        for (const [key, id] of Object.entries(data.chunks)) {
+                            this.downloading.currentChunk = parseInt(key) + 1;
+
+                            console.log('download chunk: ' + (this.downloading.currentChunk));
+
+                            const image = await File.read(id);
+
+                            if (!image) {
+                                console.error(`invalid image id: ${id}`);
+                                return;
+                            }
+
+                            let imageArray = new TextDecoder("utf-8").decode(image).split(this.divider);
+
+                            if (imageArray.length !== 2 || !imageArray[1]) {
+                                console.error(`invalid image array: ${id}`, imageArray);
+                                return;
+                            }
+
+                            const decodedData = atob(imageArray[1]);
+                            const chunk = new Uint8Array(decodedData.split('').map(char => char.charCodeAt(0)));
+                            fileContent = new Uint8Array([...fileContent, ...chunk]);
+
+                            console.log('downloaded image id: ' + id);
+                        }
+
+                        this.downloadedFiles.unshift({
+                            file: data.file,
+                            content: fileContent
+                        });
+
+                        this.downloading = null;
+                        this.hash = null;
+                    },
+                    async upload ($event) {
+                        let file = null;
+
+                        if (!(file = $event.target.files[0] || null)) {
+                            console.warn(`please choose a file for upload`);
+                            return;
+                        }
+
+                        this.uploading = {
+                            file: file,
+                            chunks: {},
+                        };
+
+                        console.log(`upload file`, file);
+
+                        const ids = [];
+
+                        for await (const { chunk, numChunks } of chunks(file)) {
+                            this.uploading.chunks.total = numChunks;
+                            this.uploading.chunks.current = ids.length + 1;
+
+                            console.log(`upload chunk: ${this.uploading.chunks.current}/${numChunks}`);
+
+                            const dummyImageArrayBuffer = dummyImage().buffer;
+                            const separatorArrayBuffer = new TextEncoder().encode(this.divider).buffer;
+
+                            const chunkString = arrayBufferToBase64(chunk);
+
+                            const data = new Uint8Array([...new Uint8Array(dummyImageArrayBuffer), ...new Uint8Array(separatorArrayBuffer), ...new TextEncoder().encode(chunkString)]);
+
+                            console.log(`chunk size: ~${formatBytes(data.length)} (${data.length} bytes)`);
+
+                            let id;
+
+                            try {
+                                id = await File.upload(data)
+                            } catch (error) {
+                                console.error(`chunk not uploaded`);
+                                console.error(error);
+                                return;
+                            }
+
+                            ids.push(id);
+
+                            console.log(`file id: ${id}`);
+                        }
+
+                        console.log(`chunks uploaded: ${ids.length}`);
+
+                        let hash = base64_encode(JSON.stringify({
+                            file: {
+                                name: file.name,
+                                size: file.size,
+                                date: Date.now(),
+                            },
+                            chunks: ids,
+                        }));
+
+                        console.log(`hash for download: ${hash}`);
+
+                        this.uploadedFiles.unshift({
+                            file: file,
+                            hash: hash,
+                        });
+
+                        this.uploading = null;
+                    },
+                    save(item) {
+                        const blob = new Blob([item.content], { type: 'application/octet-stream' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = item.file.name;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    },
+
+                    async checkCORS() {
+                        await fetch('https://telegra.ph/upload').then(() => {
+                            this.cors = true;
+                            console.log('cors policy passed');
+                        }).catch(error => {
+                            this.cors = false;
+                            console.error('cors policy not passed');
+                        });
+                    },
+
+                    getUrlParameter(name) {
+                        var url = new URL(window.location.href);
+                        var params = new URLSearchParams(url.search);
+                        return params.get(name);
+                    }
+                }));
+            });
+
+            async function* chunks(file, size = 3.74 * 1024 * 1024) {
+                const numChunks = Math.ceil(file.size / size);
+                let offset = 0;
+
+                while (offset < file.size) {
+                    const chunk = file.slice(offset, offset + size);
+                    const reader = new FileReader();
+
+                    const chunkResult = await new Promise((resolve) => {
+                        reader.onload = (event) => {
+                            const result = event.target.result;
+                            resolve({ chunk: result, numChunks });
+                        };
+
+                        reader.readAsArrayBuffer(chunk);
+                    });
+
+                    offset += size;
+
+                    yield chunkResult;
+                }
+            }
+
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 b';
+
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['b', 'kb', 'mb', 'gb', 'tb', 'pb', 'eb', 'zb', 'yb'];
+
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+
+            function base64_decode(base64) {
+                const binString = atob(base64);
+                const decoder = new TextDecoder();
+
+                return decoder.decode(Uint8Array.from(binString, (m) => m.codePointAt(0)));
+            }
+
+            function base64_encode(bytes) {
+                const binString = Array.from(new TextEncoder().encode(bytes), (byte) =>
+                    String.fromCodePoint(byte),
+                ).join("");
+                return btoa(binString);
+            }
+
+            const arrayBufferToBase64 = (chunk) => {
+                const uint8Array = new Uint8Array(chunk);
+                const charCodes = uint8Array.reduce((acc, cur) => {
+                    return acc + String.fromCharCode(cur);
+                }, '');
+                return btoa(charCodes);
+            };
+        </script>
+    </body>
+</html>
