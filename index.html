@@ -75,7 +75,7 @@
                                     <div x-text="`${formatBytes(item.file.size)}`" class="text-xs text-gray-500 shrink-0"></div>
                                 </div>
                                 <div class="mt-1 flex items-center gap-1">
-                                    <button x-data="{ label () {return this.copy}, copy: 'copy url', copied: 'url copied' }" x-text="label" @click="$clipboard(`${window.location.protocol}//${window.location.host}/?hash=${item.hash}`); label = copied; setTimeout(() => label = copy, 1200);" class="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-xs"></button>
+                                    <button x-data="{ label () {return this.copy}, copy: 'copy url', copied: 'url copied' }" x-text="label" @click="$clipboard(`${window.location.protocol}//${window.location.host}${window.location.pathname}?hash=${item.hash}`); label = copied; setTimeout(() => label = copy, 1200);" class="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-xs"></button>
 
                                     <button x-data="{ label () {return this.copy}, copy: 'copy hash', copied: 'hash copied' }" x-text="label" @click="$clipboard(item.hash); label = copied; setTimeout(() => label = copy, 1200);" class="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-xs"></button>
                                 </div>
@@ -91,6 +91,11 @@
                             download
                         </button>
                     </div>
+
+                    <div x-show="invalidHashError" class="p-3 rounded-md bg-red-100 text-red-700 border border-red-200 text-xs">
+                        Whoops! This hash is invalid.
+                    </div>
+
                     <div x-show="downloadedFiles.length > 0 || downloading" x-cloak class="flex flex-col gap-2">
                         <div x-show="downloading">
                             <div>
@@ -219,6 +224,7 @@
                     downloading: null,
                     uploadedFiles: [],
                     downloadedFiles: [],
+                    invalidHashError: false,
 
                     async bootstrap () {
                         await this.checkCORS();
@@ -230,6 +236,8 @@
                     },
 
                     async download () {
+                        this.invalidHashError = false;
+
                         if (!this.hash) {
                             return;
                         }
@@ -239,7 +247,10 @@
                         try {
                             data = JSON.parse(base64_decode(this.hash))
                         } catch (error) {
+                            this.invalidHashError = true;
+
                             console.error(`invalid hash: ${this.hash}`);
+
                             return;
                         }
 
