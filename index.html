@@ -183,6 +183,27 @@
                         </li>
                     </ul>
                 </section>
+                <section class="bg-white rounded-md border p-4 md:p-6 w-full">
+                    <div class="mb-2">
+                        You can use <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 text-red-500">cors-anywhere.herokuapp.com</a>,  but it's not recommended.
+                    </div>
+                    <div class="mb-2">
+                        <a href="https://github.com/Rob--W/cors-anywhere/issues/301" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 text-red-500">Why not recommended?</a>
+                    </div>
+                    <div class="mb-2">
+                        Here a instruction how to use it:
+                    </div>
+                    <ul class="list-inside list-decimal">
+                        <li class="">
+                            Go to <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 text-red-500">cors-anywhere.herokuapp.com</a>.
+                        </li>
+                        <li class="">
+                            Click to button "Request temporary access to the demo server"
+                        </li>
+                        <li class="">
+                            Return to this page and <a href="?proxy=true" class="hover:text-gray-500 text-red-500">*click here*</a> for get access.
+                        </li>
+                    </ul>
                 </section>
             </div>
 
@@ -194,7 +215,7 @@
                 </section>
             </div>
             <div class="max-w-xl w-full mx-auto">
-                <div class="w-full flex items-center justify-between gap-4 text-gray-400 text-xs">
+                <div class="w-full flex md:flex-row flex-col md:items-center justify-between gap-4 text-gray-400 text-xs">
                     <h1>
                         fully anonymous & free file hosting
                     </h1>
@@ -216,7 +237,7 @@
 
                 Alpine.data('app', () => ({
                     version: '1.0.0-beta',
-                    cors: true,
+                    cors: null,
                     divider: '{!{!d!v!d3r!}!}',
                     file: null,
                     hash: null,
@@ -227,12 +248,12 @@
                     invalidHashError: false,
 
                     async bootstrap () {
-                        // await this.checkCORS();
+                        await this.checkCORS();
 
-                        // if (this.cors && (this.hash = this.getUrlParameter('hash'))) {
-                        //     console.log(`hash from url: ${this.hash}`);
-                        //     this.download();
-                        // }
+                        if (this.cors && (this.hash = getUrlParameter('hash'))) {
+                            console.log(`hash from url: ${this.hash}`);
+                            this.download();
+                        }
                     },
 
                     async download () {
@@ -374,6 +395,12 @@
                     },
 
                     async checkCORS() {
+                        if (getUrlParameter('proxy') == 'true') {
+                            console.warn('proxy mode by cors-anywhere.herokuapp.com');
+                            this.cors = true;
+                            return;
+                        }
+
                         await fetch('https://telegra.ph/upload').then(() => {
                             this.cors = true;
                             console.log('cors policy passed');
@@ -382,12 +409,6 @@
                             console.error('cors policy not passed');
                         });
                     },
-
-                    getUrlParameter(name) {
-                        var url = new URL(window.location.href);
-                        var params = new URLSearchParams(url.search);
-                        return params.get(name);
-                    }
                 }));
             });
 
@@ -447,6 +468,12 @@
                 }, '');
                 return btoa(charCodes);
             };
+
+            function getUrlParameter(name) {
+                var url = new URL(window.location.href);
+                var params = new URLSearchParams(url.search);
+                return params.get(name);
+            }
         </script>
 
         <script data-goatcounter="https://anonymify.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>

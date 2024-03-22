@@ -5,7 +5,9 @@ class File {
       type: 'image/png'
     }));
 
-    const response = await fetch('https://cors-anywhere.herokuapp.com/https://telegra.ph/upload/', {
+    const corsProxyApi = getUrlParameter('proxy') == 'true' ? 'https://cors-anywhere.herokuapp.com/' : '';
+
+    const response = await fetch(`${corsProxyApi}https://telegra.ph/upload/`, {
       method: 'POST',
       body: formData,
       headers: {
@@ -25,8 +27,10 @@ class File {
   }
 
   static async read(id) {
+    const corsProxyApi = getUrlParameter('proxy') == 'true' ? 'https://cors-anywhere.herokuapp.com/' : '';
+
     try {
-      const response = await fetch('https://cors-anywhere.herokuapp.com/https://telegra.ph/file/' + id + '.png');
+      const response = await fetch(`${corsProxyApi}https://telegra.ph/file/${id}.png`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch image');
