@@ -216,7 +216,7 @@
 
                 Alpine.data('app', () => ({
                     version: '1.0.0-beta',
-                    cors: null,
+                    cors: true,
                     divider: '{!{!d!v!d3r!}!}',
                     file: null,
                     hash: null,
@@ -227,12 +227,12 @@
                     invalidHashError: false,
 
                     async bootstrap () {
-                        await this.checkCORS();
+                        // await this.checkCORS();
 
-                        if (this.cors && (this.hash = this.getUrlParameter('hash'))) {
-                            console.log(`hash from url: ${this.hash}`);
-                            this.download();
-                        }
+                        // if (this.cors && (this.hash = this.getUrlParameter('hash'))) {
+                        //     console.log(`hash from url: ${this.hash}`);
+                        //     this.download();
+                        // }
                     },
 
                     async download () {

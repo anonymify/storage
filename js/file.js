@@ -5,7 +5,7 @@ class File {
       type: 'image/png'
     }));
 
-    const response = await fetch('https://telegra.ph/upload/', {
+    const response = await fetch('https://cors-anywhere.herokuapp.com/https://telegra.ph/upload/', {
       method: 'POST',
       body: formData,
       headers: {
@@ -26,7 +26,7 @@ class File {
 
   static async read(id) {
     try {
-      const response = await fetch('https://telegra.ph/file/' + id + '.png');
+      const response = await fetch('https://cors-anywhere.herokuapp.com/https://telegra.ph/file/' + id + '.png');
 
       if (!response.ok) {
         throw new Error('Failed to fetch image');
